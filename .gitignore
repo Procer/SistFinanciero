@@ -1,0 +1,18 @@
+# Archivos de configuración local
+php/config.ini
+
+# Archivos de dependencias de vendors (si se usan)
+/vendor
+
+# Archivos de logs
+*.log
+*.sql
+*.bak
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE
+.idea/
+.vscode/

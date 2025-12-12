@@ -1,9 +1,24 @@
 <?php
-$host = 'localhost';
-$db   = 'sistfinanciero';
-$user = 'root'; // Asume el usuario por defecto de XAMPP/Laragon
-$pass = '';     // Asume la contraseña vacía por defecto de XAMPP/Laragon
-$charset = 'utf8mb4';
+
+$config_file = __DIR__ . '/config.ini';
+
+if (!file_exists($config_file)) {
+    die("Error de configuración: El archivo 'php/config.ini' no se encuentra. Por favor, cópielo desde 'php/config.example.ini' y configure sus credenciales de base de datos.");
+}
+
+$config = parse_ini_file($config_file, true);
+
+if ($config === false || !isset($config['database'])) {
+    die("Error de configuración: El archivo 'php/config.ini' es inválido o no contiene la sección [database].");
+}
+
+$db_config = $config['database'];
+
+$host = $db_config['host'];
+$db   = $db_config['dbname'];
+$user = $db_config['user'];
+$pass = $db_config['password'];
+$charset = $db_config['charset'];
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
@@ -14,8 +29,8 @@ $options = [
 
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
-    // echo "Conexión a la base de datos exitosa."; // Se puede descomentar para depuración
 } catch (\PDOException $e) {
-    throw new \PDOException($e->getMessage(), (int)$e->getCode());
+    // En un entorno de producción, sería mejor loguear este error que mostrarlo directamente.
+    throw new \PDOException('Error de conexión a la base de datos. Verifique la configuración en php/config.ini. ' . $e->getMessage(), (int)$e->getCode());
 }
 ?>
