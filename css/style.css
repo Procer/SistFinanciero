@@ -1,0 +1,214 @@
+/*
+* Paleta de Colores y Tipografía
+* -----------------------------
+* Fondo principal: #F8F9FA (Gris claro)
+* Texto principal: #212529 (Gris oscuro)
+* Acento primario (sidebar, botones, títulos): #0D6EFD (Azul Bootstrap)
+* Éxito (ingresos): #198754 (Verde Bootstrap)
+* Peligro (gastos): #DC3545 (Rojo Bootstrap)
+* Fuente: 'Manrope', sans-serif
+*/
+
+/* Estilos Generales */
+body {
+    font-family: 'Manrope', sans-serif;
+    background-color: #F8F9FA;
+    overflow-x: hidden;
+    color: #212529;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700; /* Negrita para títulos */
+}
+
+/* Efectos de transición suaves */
+.btn, .card, .list-group-item {
+    transition: all 0.3s ease;
+}
+
+/* Contenedor principal */
+#wrapper {
+    display: flex;
+}
+
+/* Sidebar */
+#sidebar-wrapper {
+    background-color: #212529; /* Un negro más suave */
+    border-right: 1px solid #343a40;
+    min-height: 100vh;
+    width: 250px;
+    position: fixed;
+    left: -250px;
+    transition: left 0.3s ease;
+    z-index: 1000;
+}
+
+#wrapper.toggled #sidebar-wrapper {
+    left: 0;
+}
+
+.sidebar-heading {
+    padding: 1.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    border-bottom: 1px solid #343a40;
+}
+
+.list-group-item {
+    background-color: transparent;
+    color: #adb5bd;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.list-group-item i {
+    color: #6c757d;
+    transition: color 0.3s ease;
+}
+
+.list-group-item:hover, .list-group-item.active {
+    background-color: #0D6EFD;
+    color: #fff;
+    border-radius: 5px;
+}
+
+.list-group-item:hover i, .list-group-item.active i {
+    color: #fff;
+}
+
+/* Contenido de la página */
+#page-content-wrapper {
+    width: 100%;
+    padding-left: 0; /* Ajuste para el sidebar fijo */
+    transition: padding-left 0.3s ease;
+}
+
+#wrapper.toggled #page-content-wrapper {
+    padding-left: 250px;
+}
+
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+#menu-toggle {
+    border: none;
+}
+
+/* Tarjetas de Resumen */
+.card {
+    border: none;
+    border-radius: 0.75rem; /* Bordes más redondeados */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.15);
+}
+
+.card .card-body {
+    padding: 1.5rem;
+}
+
+.card .text-uppercase {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.card .h5 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* Estilos específicos para las tarjetas de resumen */
+.card.bg-primary { background-color: #0D6EFD !important; }
+.card.bg-success { background-color: #198754 !important; }
+.card.bg-danger { background-color: #DC3545 !important; }
+
+
+/* Tabla de Cuentas */
+#cuentasTable {
+    border-collapse: separate;
+    border-spacing: 0 10px; /* Espacio entre filas */
+}
+
+#cuentasTable thead th {
+    border: none;
+    font-weight: 700;
+}
+
+#cuentasTable tbody tr {
+    background-color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+}
+
+#cuentasTable tbody td {
+    vertical-align: middle;
+    padding: 1rem;
+    border: none;
+}
+
+#cuentasTable tbody tr:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 0.75rem;
+    border: none;
+}
+
+.modal-header {
+    border-bottom: none;
+}
+
+.modal-footer {
+    border-top: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        left: -250px;
+    }
+    #wrapper.toggled #sidebar-wrapper {
+        left: 0;
+    }
+    #page-content-wrapper {
+        padding-left: 0;
+    }
+    #wrapper.toggled #page-content-wrapper {
+        padding-left: 0; /* No empujar contenido en móvil */
+        position: relative;
+    }
+    #wrapper.toggled::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+}
+
+/* Custom background color for NatanjayX */
+.card.bg-orange {
+    background-color: #FF5722 !important; /* Un naranja de Material Design, se puede ajustar */
+}
+
+/* Nuevos colores para cuentas específicas */
+.bg-naranja-x {
+    background-color: #50007f !important;
+}
+
+.bg-banco-galicia {
+    background-color: #c85000 !important;
+}
