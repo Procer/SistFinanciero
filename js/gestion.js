@@ -1,65 +1,114 @@
 $(document).ready(function() {
+    // Función para formatear números para el servidor (reemplaza coma por punto)
+    function formatNumberForServer(numString) {
+        if (numString === null || numString === undefined || numString === '') {
+            return 0;
+        }
+        return parseFloat(numString.replace(',', '.'));
+    }
+
     // --- Lógica para Categorías ---
 
-    // Cargar ambas tablas de categorías al iniciar
-    cargarCategoriasGasto();
-    cargarCategoriasIngreso();
-
     /**
-     * Carga y muestra la lista de categorías de GASTOS.
+     * Carga y renderiza la tabla de categorías de forma jerárquica.
+     * @param {string} tipo - 'ingreso' o 'gasto'.
+     * @param {string} containerId - El ID del tbody de la tabla.
      */
-    function cargarCategoriasGasto() {
+    function cargarTablaCategorias(tipo, containerId) {
         $.ajax({
-            url: 'php/api/categorias/read.php?tipo=gasto',
+            url: `php/api/categorias/read.php?tipo=${tipo}`, // La API ahora devuelve datos jerárquicos
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
-                    let tbody = $('#categorias-gasto-tbody');
+                    let tbody = $(containerId);
                     tbody.empty();
-                    response.data.forEach(function(categoria) {
-                        tbody.append(`
-                            <tr>
-                                <td>${categoria.nombre}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-info editar-categoria" data-id="${categoria.id_categoria}" data-nombre="${categoria.nombre}"><i class="fas fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-danger eliminar-categoria" data-id="${categoria.id_categoria}"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        `);
-                    });
+                    renderCategoriaRows(response.data, 0, tbody, tipo);
+                } else {
+                    console.error(`Error al cargar categorías de ${tipo}:`, response.message);
                 }
+            },
+            error: function(xhr) {
+                console.error(`Error en la petición AJAX para cargar categorías de ${tipo}.`, xhr);
             }
         });
     }
 
     /**
-     * Carga y muestra la lista de categorías de INGRESOS.
+     * Función recursiva para renderizar las filas de categorías y subcategorías.
+     * @param {Array} categorias - Array de categorías a renderizar.
+     * @param {number} level - Nivel de anidación para la indentación.
+     * @param {jQuery} container - El elemento tbody donde se insertarán las filas.
+     * @param {string} tipo - 'ingreso' o 'gasto'.
      */
-    function cargarCategoriasIngreso() {
+    function renderCategoriaRows(categorias, level, container, tipo) {
+        const indent = level * 25; // 25px de indentación por nivel
+        categorias.forEach(function(categoria) {
+            container.append(`
+                <tr>
+                    <td style="padding-left: ${indent}px;">
+                        ${level > 0 ? '<span class="text-muted">&hookrightarrow;</span> ' : ''}
+                        ${categoria.nombre}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-info editar-categoria" 
+                                data-id="${categoria.id_categoria}" 
+                                data-nombre="${categoria.nombre}"
+                                data-id-padre="${categoria.id_categoria_padre || ''}"
+                                data-tipo="${tipo}"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#categoriaModal">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger eliminar-categoria" data-id="${categoria.id_categoria}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+            if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+                renderCategoriaRows(categoria.subcategorias, level + 1, container, tipo);
+            }
+        });
+    }
+    
+    /**
+     * Carga el select de "Categoría Padre" en el modal.
+     * @param {string} tipo - 'ingreso' o 'gasto'.
+     * @param {number|null} idCategoriaExcluida - El ID de la categoría que se está editando (para no ser su propio padre).
+     * @param {number|null} idSeleccionado - El ID de la categoría padre actual para pre-seleccionarlo.
+     */
+    function cargarSelectCategoriaPadre(tipo, idCategoriaExcluida = null, idSeleccionado = null) {
+        // Usamos el endpoint con `flat=true` para obtener una lista simple.
         $.ajax({
-            url: 'php/api/categorias/read.php?tipo=ingreso',
+            url: `php/api/categorias/read.php?tipo=${tipo}&flat=true`,
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
-                    let tbody = $('#categorias-ingreso-tbody');
-                    tbody.empty();
+                    let select = $('#categoriaPadre');
+                    select.empty();
+                    select.append('<option value="">-- Sin categoría padre --</option>');
+                    
                     response.data.forEach(function(categoria) {
-                        tbody.append(`
-                            <tr>
-                                <td>${categoria.nombre}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-info editar-categoria" data-id="${categoria.id_categoria}" data-nombre="${categoria.nombre}"><i class="fas fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-danger eliminar-categoria" data-id="${categoria.id_categoria}"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        `);
+                        // Excluir la categoría que se está editando de la lista de posibles padres.
+                        if (categoria.id_categoria !== idCategoriaExcluida) {
+                           select.append(`<option value="${categoria.id_categoria}">${categoria.nombre}</option>`);
+                        }
                     });
+
+                    if (idSeleccionado) {
+                        select.val(idSeleccionado);
+                    }
                 }
             }
         });
     }
+
+    // Cargar ambas tablas al iniciar
+    cargarTablaCategorias('gasto', '#categorias-gasto-tbody');
+    cargarTablaCategorias('ingreso', '#categorias-ingreso-tbody');
+
 
     // Preparar el modal para NUEVA categoría
     $('.btn-nueva-categoria').on('click', function() {
@@ -68,18 +117,25 @@ $(document).ready(function() {
         const tipo = $(this).data('tipo');
         $('#categoriaTipo').val(tipo);
         $('#categoriaModalLabel').text(`Nueva Categoría de ${tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}`);
+        cargarSelectCategoriaPadre(tipo);
     });
 
     // Preparar modal para EDITAR categoría
     $(document).on('click', '.editar-categoria', function() {
         const id = $(this).data('id');
         const nombre = $(this).data('nombre');
+        const idPadre = $(this).data('id-padre');
+        const tipo = $(this).data('tipo');
         
+        $('#formCategoria')[0].reset();
         $('#categoriaId').val(id);
+        $('#categoriaTipo').val(tipo);
         $('#categoriaNombre').val(nombre);
         
         $('#categoriaModalLabel').text('Editar Categoría');
-        $('#categoriaModal').modal('show');
+        
+        // Cargar el select de padres, excluyendo la categoría actual y seleccionando su padre.
+        cargarSelectCategoriaPadre(tipo, id, idPadre);
     });
 
     /**
@@ -92,9 +148,10 @@ $(document).ready(function() {
         const url = id ? 'php/api/categorias/update.php' : 'php/api/categorias/create.php';
         
         const categoriaData = {
-            id_categoria: id,
+            id_categoria: id || null,
             nombre: $('#categoriaNombre').val(),
-            tipo: $('#categoriaTipo').val()
+            tipo: $('#categoriaTipo').val(),
+            id_categoria_padre: $('#categoriaPadre').val() || null
         };
 
         $.ajax({
@@ -104,13 +161,12 @@ $(document).ready(function() {
             data: JSON.stringify(categoriaData),
             dataType: 'json',
             success: function(response) {
+                alert(response.message);
                 if (response.status === 'success' || response.status === 'info') {
-                    alert(response.message);
                     $('#categoriaModal').modal('hide');
-                    cargarCategoriasGasto();
-                    cargarCategoriasIngreso();
-                } else {
-                    alert('Error: ' + response.message);
+                    // Recargar ambas tablas
+                    cargarTablaCategorias('gasto', '#categorias-gasto-tbody');
+                    cargarTablaCategorias('ingreso', '#categorias-ingreso-tbody');
                 }
             },
             error: function(xhr) {
@@ -126,9 +182,9 @@ $(document).ready(function() {
     // Manejar la eliminación de una categoría
     $(document).on('click', '.eliminar-categoria', function() {
         const id = $(this).data('id');
-        const nombre = $(this).closest('tr').find('td:first').text();
+        const nombre = $(this).closest('tr').find('td:first').text().trim();
 
-        if (confirm(`¿Estás seguro de que quieres eliminar la categoría "${nombre}"?`)) {
+        if (confirm(`¿Estás seguro de que quieres eliminar la categoría "${nombre}"?\n\nSi tiene subcategorías, estas se convertirán en categorías principales.`)) {
             $.ajax({
                 url: 'php/api/categorias/delete.php',
                 method: 'POST',
@@ -138,8 +194,8 @@ $(document).ready(function() {
                 success: function(response) {
                     if (response.status === 'success') {
                         alert(response.message);
-                        cargarCategoriasGasto();
-                        cargarCategoriasIngreso();
+                        cargarTablaCategorias('gasto', '#categorias-gasto-tbody');
+                        cargarTablaCategorias('ingreso', '#categorias-ingreso-tbody');
                     } else {
                         alert('Error: ' + response.message);
                     }
@@ -154,6 +210,7 @@ $(document).ready(function() {
             });
         }
     });
+
 
 
     // --- Lógica para Formas de Pago ---
@@ -374,10 +431,10 @@ $(document).ready(function() {
         const ingresoFijoData = {
             id_ingreso_fijo: id,
             nombre: $('#ingresoFijoNombre').val(),
-            monto: $('#ingresoFijoMonto').val(),
+            monto: formatNumberForServer($('#ingresoFijoMonto').val()),
             frecuencia: $('#ingresoFijoFrecuencia').val(),
             dia_pago: $('#ingresoFijoDiaPago').val(),
-            proximo_aumento_simulado_porcentaje: $('#ingresoFijoAumentoSimulado').val()
+            proximo_aumento_simulado_porcentaje: formatNumberForServer($('#ingresoFijoAumentoSimulado').val())
         };
 
         $.ajax({
@@ -522,7 +579,7 @@ $(document).ready(function() {
             nombre: $('#viajeProyectoNombre').val(),
             fecha_inicio: $('#viajeProyectoFechaInicio').val(),
             fecha_fin: $('#viajeProyectoFechaFin').val(),
-            presupuesto_total: $('#viajeProyectoPresupuesto').val()
+            presupuesto_total: formatNumberForServer($('#viajeProyectoPresupuesto').val())
         };
 
         $.ajax({
@@ -665,7 +722,7 @@ $(document).ready(function() {
         const gastoFijoData = {
             id_gasto_fijo: id,
             nombre: $('#gastoFijoNombre').val(),
-            monto: $('#gastoFijoMonto').val(),
+            monto: formatNumberForServer($('#gastoFijoMonto').val()),
             frecuencia: $('#gastoFijoFrecuencia').val(),
             dia_pago: $('#gastoFijoDiaPago').val()
         };
@@ -712,6 +769,133 @@ $(document).ready(function() {
                     if (response.status === 'success') {
                         alert(response.message);
                         cargarGastosFijos();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error al procesar la solicitud.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    alert(errorMsg);
+                }
+            });
+        }
+    });
+
+    // --- Lógica para Cuentas ---
+
+    cargarCuentas();
+
+    function cargarCuentas() {
+        $.ajax({
+            url: 'php/api/cuentas/read.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    let tbody = $('#cuentas-tbody');
+                    tbody.empty();
+                    response.data.forEach(function(cuenta) {
+                        tbody.append(`
+                            <tr data-id="${cuenta.id_cuenta}" data-nombre="${cuenta.nombre}" data-tipo="${cuenta.tipo_cuenta}" data-saldo="${cuenta.saldo_inicial}">
+                                <td>${cuenta.nombre}</td>
+                                <td>${cuenta.tipo_cuenta}</td>
+                                <td>$${parseFloat(cuenta.saldo_inicial).toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info editar-cuenta"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-danger eliminar-cuenta"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                     $('#cuentas-tbody').empty().append('<tr><td colspan="4">Error al cargar las cuentas.</td></tr>');
+                }
+            },
+            error: function() {
+                 $('#cuentas-tbody').empty().append('<tr><td colspan="4">Error de conexión al cargar las cuentas.</td></tr>');
+            }
+        });
+    }
+
+    $('button[data-bs-target="#cuentaModal"]').on('click', function() {
+        $('#formCuenta')[0].reset();
+        $('#cuentaId').val('');
+        $('#cuentaModalLabel').text('Nueva Cuenta');
+    });
+
+    $('#cuentas-tbody').on('click', '.editar-cuenta', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
+        const nombre = row.data('nombre');
+        const tipo = row.data('tipo');
+        const saldo = row.data('saldo');
+
+        $('#cuentaId').val(id);
+        $('#cuentaNombre').val(nombre);
+        $('#cuentaTipo').val(tipo);
+        $('#cuentaSaldo').val(saldo);
+        
+        $('#cuentaModalLabel').text('Editar Cuenta');
+        $('#cuentaModal').modal('show');
+    });
+
+    $('#formCuenta').submit(function(e) {
+        e.preventDefault();
+        
+        const id = $('#cuentaId').val();
+        const url = id ? 'php/api/cuentas/update.php' : 'php/api/cuentas/create.php';
+        
+        const cuentaData = {
+            id_cuenta: id,
+            nombre: $('#cuentaNombre').val(),
+            tipo_cuenta: $('#cuentaTipo').val(),
+            saldo_inicial: formatNumberForServer($('#cuentaSaldo').val())
+        };
+
+        $.ajax({
+            url: url,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(cuentaData),
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success' || response.status === 'info') {
+                    alert(response.message);
+                    $('#cuentaModal').modal('hide');
+                    cargarCuentas();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                 let errorMsg = 'Error al procesar la solicitud.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    });
+
+    $('#cuentas-tbody').on('click', '.eliminar-cuenta', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
+        const nombre = row.data('nombre');
+
+        if (confirm(`¿Estás seguro de que quieres eliminar la cuenta "${nombre}"? Esta acción no se puede deshacer.`)) {
+            $.ajax({
+                url: 'php/api/cuentas/delete.php',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id_cuenta: id }),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        alert(response.message);
+                        cargarCuentas();
                     } else {
                         alert('Error: ' + response.message);
                     }

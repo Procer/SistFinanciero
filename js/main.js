@@ -19,6 +19,14 @@ $(document).ready(function(){
         return integerPart + "," + decimalPart;
     }
 
+    // Función para formatear números para el servidor (reemplaza coma por punto)
+    function formatNumberForServer(numString) {
+        if (numString === null || numString === undefined || numString === '') {
+            return 0;
+        }
+        return parseFloat(numString.replace(',', '.'));
+    }
+
     // Función para cargar los datos del dashboard
     function cargarDashboard() {
         console.log('Iniciando cargarDashboard()');
@@ -37,13 +45,17 @@ $(document).ready(function(){
                     $('#gastos-mes').text('$' + formatNumber(data.total_gastos_mes));
                     console.log('Tarjetas de resumen actualizadas.');
 
-                    // Actualizar widgets de cuentas
+                    // Actualizar widgets de cuentas y generar botones de acción rápida
                     let widgetsHtml = '';
+                    let quickButtonsHtml = '';
+                    const quickActionAccounts = ['Banco Galicia', 'Billetera (Efectivo)', 'Mercado Pago', 'Cuenta Naranja X'];
+
                     if (data.cuentas.length > 0) {
                         data.cuentas.forEach(function(cuenta) {
+                            // Lógica para widgets
                             let icon = 'fa-question-circle';
-                            let bgColor = 'bg-secondary'; // Color por defecto
-                            let customStyle = ''; // Inicializar customStyle
+                            let bgColor = 'bg-secondary';
+                            let customStyle = '';
 
                             if (cuenta.nombre === 'Cuenta Naranja X') {
                                 icon = 'fa-mobile-alt';
@@ -53,16 +65,16 @@ $(document).ready(function(){
                                 customStyle = 'background-color: #c85000 !important;';
                             } else if (cuenta.nombre === 'Mercado Pago') {
                                 icon = 'fa-money-bill-alt';
-                                bgColor = 'bg-info'; // Celeste (bg-info)
+                                bgColor = 'bg-info';
                             } else if (cuenta.tipo_cuenta === 'billetera') {
                                 icon = 'fa-wallet';
-                                bgColor = 'bg-dark'; // Otro color para billetera (negro/gris oscuro)
+                                bgColor = 'bg-dark';
                             } else if (cuenta.tipo_cuenta === 'banco') {
                                 icon = 'fa-university';
-                                bgColor = 'bg-primary'; // Azul Bootstrap por defecto para otros bancos
+                                bgColor = 'bg-primary';
                             } else if (cuenta.tipo_cuenta === 'otro') {
                                 icon = 'fa-star';
-                                bgColor = 'bg-light text-dark'; // Otros, con fondo claro y texto oscuro
+                                bgColor = 'bg-light text-dark';
                             }
 
                             widgetsHtml += `
@@ -72,7 +84,7 @@ $(document).ready(function(){
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
                                                     <div class="text-white-75 small">${cuenta.nombre}</div>
-                                                    <div class="h4 fw-bold">$${formatNumber(cuenta.saldo_inicial)}</div>
+                                                    <div class="h4 fw-bold">$${formatNumber(cuenta.saldo_actual)}</div>
                                                 </div>
                                                 <i class="fas ${icon} fa-2x opacity-50"></i>
                                             </div>
@@ -80,42 +92,86 @@ $(document).ready(function(){
                                     </div>
                                 </div>
                             `;
+
+                            // Lógica para botones de acción rápida
+                            if (quickActionAccounts.includes(cuenta.nombre)) {
+                                let icon_quick = 'fa-wallet';
+                                let card_style = 'border-primary';
+                                if (cuenta.nombre.toLowerCase().includes('galicia')) {
+                                    icon_quick = 'fa-university';
+                                } else if (cuenta.nombre.toLowerCase().includes('billetera')) {
+                                    icon_quick = 'fa-money-bill-wave';
+                                } else if (cuenta.nombre.toLowerCase().includes('mercado pago')) {
+                                    icon_quick = 'fa-hand-holding-usd';
+                                    card_style = 'border-info';
+                                } else if (cuenta.nombre.toLowerCase().includes('naranja x')) {
+                                    icon_quick = 'fa-credit-card';
+                                }
+                                quickButtonsHtml += `
+                                    <div class="col-lg-3 col-md-6 mb-3">
+                                        <div class="card card-body text-center quick-action-card btn-quick-expense ${card_style}" 
+                                             data-account-id="${cuenta.id_cuenta}" 
+                                             data-account-name="${cuenta.nombre}"
+                                             data-bs-toggle="modal" 
+                                             data-bs-target="#transaccionModal"
+                                             style="cursor: pointer;">
+                                            <i class="fas ${icon_quick} fa-2x mb-2 text-muted"></i>
+                                            <span class="fw-bold">Gasto en ${cuenta.nombre}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }
                         });
                     } else {
                         widgetsHtml = '<div class="col-12"><p>No hay cuentas registradas.</p></div>';
                     }
-                    console.log('HTML de widgets de cuentas generado:', widgetsHtml);
                     $('#cuentas-widgets-container').html(widgetsHtml);
-                    console.log('Widgets de cuentas actualizados.');
+                    $('#quick-expense-buttons-container').html(quickButtonsHtml);
+                    console.log('Widgets y botones de acción rápida actualizados.');
 
                     // Actualizar tabla de transacciones
                     let transaccionesHtml = '';
                     if (data.transacciones_mes && data.transacciones_mes.length > 0) {
                         data.transacciones_mes.forEach(function(tx) {
-                            const montoClass = tx.tipo_movimiento === 'ingreso' ? 'text-success' : 'text-danger';
-                            const montoSigno = tx.tipo_movimiento === 'ingreso' ? '+' : '-';
-                            const descripcion = tx.descripcion ? tx.descripcion : '';
+                            if (tx.tipo_movimiento === 'transferencia') {
+                                transaccionesHtml += `
+                                    <tr class="table-light">
+                                        <td>${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
+                                        <td class="fw-bold text-muted">$${formatNumber(tx.monto)}</td>
+                                        <td><i class="fas fa-exchange-alt me-2 text-info"></i>Transferencia</td>
+                                        <td>N/A</td>
+                                        <td>${tx.descripcion || `De ${tx.cuenta_origen_nombre} a ${tx.cuenta_destino_nombre}`}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Las transferencias no se pueden editar">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            } else {
+                                const montoClass = tx.tipo_movimiento === 'ingreso' ? 'text-success' : 'text-danger';
+                                const montoSigno = tx.tipo_movimiento === 'ingreso' ? '+' : '-';
+                                const descripcion = tx.descripcion ? tx.descripcion : '';
+                                const txData = encodeURIComponent(JSON.stringify(tx));
 
-                            // Convertir el objeto tx a una cadena JSON y luego escaparla para el atributo de datos
-                            const txData = encodeURIComponent(JSON.stringify(tx));
-
-                            transaccionesHtml += `
-                                <tr>
-                                    <td>${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
-                                    <td class="${montoClass} fw-bold">${montoSigno} $${formatNumber(tx.monto)}</td>
-                                    <td>${tx.categoria_nombre}</td>
-                                    <td>${tx.forma_pago_nombre || 'Efectivo'}</td>
-                                    <td>${descripcion}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary btn-edit-transaction" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#transaccionModal"
-                                                data-tx='${txData}'>
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
+                                transaccionesHtml += `
+                                    <tr>
+                                        <td>${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
+                                        <td class="${montoClass} fw-bold">${montoSigno} $${formatNumber(tx.monto)}</td>
+                                        <td>${tx.categoria_nombre || 'Sin categoría'}</td>
+                                        <td>${tx.forma_pago_nombre || 'N/A'}</td>
+                                        <td>${descripcion}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary btn-edit-transaction" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#transaccionModal"
+                                                    data-tx='${txData}'>
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }
                         });
                     } else {
                         transaccionesHtml = '<tr><td colspan="6" class="text-center">No hay transacciones este mes.</td></tr>';
@@ -125,18 +181,16 @@ $(document).ready(function(){
 
                 } else {
                     console.error('Error al cargar el dashboard:', response.message);
-                    // Aquí se podría mostrar un mensaje de error en la UI
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.error('Error en la petición AJAX:', textStatus, errorThrown);
-                // Aquí se podría mostrar un mensaje de error en la UI
             }
         });
     }
 
     // Funciones para cargar selects del modal de transacción
-    function cargarCuentasSelect() {
+    function cargarCuentasSelect(selectedAccountId = null) {
         return $.ajax({
             url: 'php/api/get_cuentas.php',
             method: 'GET',
@@ -145,31 +199,58 @@ $(document).ready(function(){
                 if (response.status === 'success') {
                     let options = '<option value="">Seleccione...</option>';
                     response.data.forEach(function(cuenta) {
-                        options += `<option value="${cuenta.id_cuenta}">${cuenta.nombre} (${cuenta.tipo_cuenta})</option>`;
+                        options += `<option value="${cuenta.id_cuenta}">${cuenta.nombre}</option>`;
                     });
                     $('#cuenta').html(options);
+                    if (selectedAccountId) {
+                        $('#cuenta').val(selectedAccountId);
+                    }
                 } else {
                     console.error('Error al cargar cuentas:', response.message);
                 }
             }
         });
     }
-
+    
+    // ... (resto de funciones cargarCategoriasSelect, cargarFormasPagoSelect, etc. sin cambios)
     function cargarCategoriasSelect(tipo) {
         return $.ajax({
-            url: 'php/api/get_categorias.php?tipo=' + tipo, // Pasar el tipo como parámetro
+            url: 'php/api/categorias/read.php?tipo=' + tipo,
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
                     let options = '<option value="">Seleccione...</option>';
-                    response.data.forEach(function(categoria) {
-                        options += `<option value="${categoria.id_categoria}">${categoria.nombre}</option>`; // Eliminar (tipo)
-                    });
+                    
+                    function renderOptions(categorias) {
+                        categorias.forEach(function(categoria) {
+                            // Si la categoría tiene subcategorías, la tratamos como un grupo
+                            if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+                                options += `<optgroup label="${categoria.nombre}">`;
+                                // Opcional: si quieres que la categoría padre también sea seleccionable
+                                // options += `<option value="${categoria.id_categoria}">${categoria.nombre}</option>`;
+                                
+                                // Renderizar las subcategorías
+                                categoria.subcategorias.forEach(function(subcategoria) {
+                                    options += `<option value="${subcategoria.id_categoria}">&nbsp;&nbsp;&nbsp;${subcategoria.nombre}</option>`;
+                                });
+
+                                options += `</optgroup>`;
+                            } else {
+                                // Si no tiene subcategorías, es una opción normal
+                                options += `<option value="${categoria.id_categoria}">${categoria.nombre}</option>`;
+                            }
+                        });
+                    }
+
+                    renderOptions(response.data);
                     $('#categoria').html(options);
                 } else {
                     console.error('Error al cargar categorías:', response.message);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error en la petición AJAX para cargar categorías:', error);
             }
         });
     }
@@ -195,7 +276,7 @@ $(document).ready(function(){
 
     function cargarTarjetasCreditoSelect() {
         return $.ajax({
-            url: 'php/api/tarjetas_credito/read.php', // Usamos el endpoint de read que ya existe
+            url: 'php/api/tarjetas_credito/read.php',
             method: 'GET',
             dataType: 'json',
             success: function(tarjetas) {
@@ -220,7 +301,7 @@ $(document).ready(function(){
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
-                    let options = '<option value="">N/A</option>'; // Opción para no asignar proyecto
+                    let options = '<option value="">N/A</option>';
                     response.data.forEach(function(proyecto) {
                         options += `<option value="${proyecto.id_proyecto}">${proyecto.nombre}</option>`;
                     });
@@ -237,30 +318,28 @@ $(document).ready(function(){
 
     // Evento para el botón de "Editar Transacción"
     $(document).on('click', '.btn-edit-transaction', function() {
+        $('#formTransaccion')[0].reset();
         const txDataString = decodeURIComponent($(this).data('tx'));
         const tx = JSON.parse(txDataString);
 
         $('#transaccionModalLabel').text('Editar Transacción');
 
-        // Usamos $.when para asegurarnos de que todos los selects se carguen antes de setear los valores
         $.when(
-            cargarCuentasSelect(),
+            cargarCuentasSelect(tx.id_cuenta),
             cargarCategoriasSelect(tx.tipo_movimiento),
             cargarFormasPagoSelect(),
             cargarViajesProyectosSelect(),
-            cargarTarjetasCreditoSelect() // Asegurarse que se cargue si es necesario
+            cargarTarjetasCreditoSelect()
         ).done(function() {
-            // Todos los selects se han cargado, ahora podemos setear los valores
             $('#transaccionId').val(tx.id_transaccion);
             $('#tipoMovimiento').val(tx.tipo_movimiento);
             $('#tipoMovimientoWrapper').hide();
+            $('#cuenta').prop('disabled', false);
             
             $('#montoTransaccion').val(tx.monto);
-            $('#cuenta').val(tx.id_cuenta);
             $('#categoria').val(tx.id_categoria);
             $('#formaPago').val(tx.id_forma_pago).trigger('change');
             
-            // Formatear la fecha para el input datetime-local
             const fecha = new Date(tx.fecha_transaccion);
             fecha.setMinutes(fecha.getMinutes() - fecha.getTimezoneOffset());
             $('#fecha').val(fecha.toISOString().slice(0, 16));
@@ -273,91 +352,130 @@ $(document).ready(function(){
                 $('#viajeProyecto').val('');
             }
             
-            // La edición de transacciones simples no maneja la lógica de tarjeta de crédito
             $('#camposTarjetaCredito').hide();
             $('#montoTransaccion').prop('required', true);
             $('#montoTotalTarjeta').prop('required', false);
         });
     });
 
-
-    // Evento para los botones de "Nuevo Ingreso" y "Nuevo Gasto"
-    $(document).on('click', '.btn-add-transaction', function() {
-        const tipo = $(this).data('type');
-
-        // Limpiar el ID de transacción para asegurar que es una creación
+    // Evento para el botón de GASTO RÁPIDO
+    $(document).on('click', '.btn-quick-expense', function() {
+        $('#formTransaccion')[0].reset();
+        const accountId = $(this).data('account-id');
+        const accountName = $(this).data('account-name').toLowerCase();
+    
         $('#transaccionId').val('');
-
-        // Cargar los selects
-        cargarCuentasSelect();
-        cargarCategoriasSelect(tipo);
-        cargarFormasPagoSelect();
-        cargarTarjetasCreditoSelect(); // Cargar las tarjetas de crédito
-        cargarViajesProyectosSelect(); // Cargar los viajes/proyectos
-
-        // Establecer la fecha y hora actual en el campo de fecha
+        $('#transaccionModalLabel').text(`Nuevo Gasto`);
+    
+        // Pre-seleccionar tipo gasto y ocultar
+        $('#tipoMovimiento').val('gasto');
+        $('#tipoMovimientoWrapper').hide();
+    
+        // Setear fecha actual
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         $('#fecha').val(now.toISOString().slice(0,16));
+    
+        // Cargar todos los selects y luego pre-rellenar
+        $.when(
+            cargarCuentasSelect(accountId),
+            cargarCategoriasSelect('gasto'),
+            cargarFormasPagoSelect(),
+            cargarTarjetasCreditoSelect(),
+            cargarViajesProyectosSelect()
+        ).done(function() {
+            // La cuenta ya se selecciona en `cargarCuentasSelect`
+            // Ahora, autocompletar la forma de pago
+            const formaPagoSelect = $('#formaPago');
+            let textoFormaPago = '';
+    
+            if (accountName.includes('banco galicia')) {
+                textoFormaPago = 'transferencia bancaria';
+            } else if (accountName.includes('billetera')) {
+                textoFormaPago = 'efectivo';
+            } else if (accountName.includes('mercado pago')) {
+                textoFormaPago = 'mercado pago';
+            } else if (accountName.includes('naranja x')) {
+                textoFormaPago = 'transferencia bancaria';
+            }
+            
+            if (textoFormaPago) {
+                const option = formaPagoSelect.find('option').filter(function() {
+                    return $(this).text().trim().toLowerCase() === textoFormaPago;
+                }).val();
+                if (option) {
+                    formaPagoSelect.val(option).trigger('change');
+                }
+            }
+        });
+    });
 
 
-        // Preseleccionar el tipo de movimiento, ocultar el campo y cambiar el título
+    // Evento para los botones genéricos de "Nuevo Ingreso" y "Nuevo Gasto"
+    $(document).on('click', '.btn-add-transaction', function() {
+        $('#formTransaccion')[0].reset();
+        const tipo = $(this).data('type');
+
+        $('#transaccionId').val('');
         $('#tipoMovimientoWrapper').hide();
+        
         if (tipo === 'ingreso') {
-            $('#tipoMovimiento').val('ingreso');
             $('#transaccionModalLabel').text('Nuevo Ingreso');
-            $('#montoTransaccion').prop('required', true); // Requerir monto para ingresos
-            $('#montoTotalTarjeta').prop('required', false).val(''); // Desrequerir monto tarjeta
-            $('#camposTarjetaCredito').hide(); // Ocultar campos de tarjeta
-            $('#tarjetaCredito').val('').prop('required', false);
-            $('#cuotasTotales').val('1').prop('required', false);
-        } else if (tipo === 'gasto') {
-            $('#tipoMovimiento').val('gasto');
+            $('#tipoMovimiento').val('ingreso');
+        } else {
             $('#transaccionModalLabel').text('Nuevo Gasto');
-            // La visibilidad de campos de tarjeta se maneja por el change de formaPago
-            $('#montoTransaccion').prop('required', true);
-            $('#montoTotalTarjeta').prop('required', false).val('');
+            $('#tipoMovimiento').val('gasto');
         }
+
+        // Cargar todos los selects
+        cargarCuentasSelect();
+        cargarCategoriasSelect(tipo);
+        cargarFormasPagoSelect();
+        cargarTarjetasCreditoSelect();
+        cargarViajesProyectosSelect();
+
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        $('#fecha').val(now.toISOString().slice(0,16));
     });
 
     // Lógica para mostrar/ocultar campos de tarjeta de crédito
     $(document).on('change', '#formaPago', function() {
         const formaPagoSeleccionadaTexto = $(this).find('option:selected').text().toLowerCase();
         
-        if (formaPagoSeleccionadaTexto.includes('crédito') || formaPagoSeleccionadaTexto.includes('tarjeta')) { // Asumimos que cualquier forma de pago que incluya "crédito" o "tarjeta" es una tarjeta de crédito
+        if (formaPagoSeleccionadaTexto.includes('crédito') || formaPagoSeleccionadaTexto.includes('tarjeta')) {
             $('#camposTarjetaCredito').show();
-            $('#montoTransaccion').prop('required', false).val(''); // Desrequerir monto normal
-            $('#montoTotalTarjeta').prop('required', true); // Requerir monto de tarjeta
+            $('#montoTransaccion').prop('required', false).val('');
+            $('#montoTotalTarjeta').prop('required', true);
             $('#tarjetaCredito').prop('required', true);
             $('#cuotasTotales').prop('required', true);
         } else {
             $('#camposTarjetaCredito').hide();
-            $('#montoTransaccion').prop('required', true); // Requerir monto normal
-            $('#montoTotalTarjeta').prop('required', false).val(''); // Desrequerir monto de tarjeta
+            $('#montoTransaccion').prop('required', true);
+            $('#montoTotalTarjeta').prop('required', false).val('');
             $('#tarjetaCredito').val('').prop('required', false);
             $('#cuotasTotales').val('1').prop('required', false);
         }
     });
 
-
-    // Limpiar el formulario y mostrar campos ocultos cuando el modal se cierra
+    // Limpiar el formulario y re-habilitar campos cuando el modal se cierra
     $('#transaccionModal').on('hidden.bs.modal', function () {
         $('#formTransaccion')[0].reset();
-        $('#transaccionId').val(''); // Asegurarse de limpiar el ID
+        $('#transaccionId').val('');
         $('#transaccionModalLabel').text('Nueva Transacción');
-        $('#tipoMovimientoWrapper').show(); // Asegurarse de que el campo sea visible la próxima vez
-        $('#formaPago').prop('disabled', false); // Habilitar siempre el campo al cerrar
-        $('#camposTarjetaCredito').hide(); // Ocultar campos de tarjeta
-        $('#tarjetaCredito').val('').prop('required', false); // Limpiar y desrequerir
-        $('#cuotasTotales').val('1').prop('required', false); // Limpiar y desrequerir
-        $('#montoTransaccion').prop('required', true); // Asegurar que el monto normal sea requerido por defecto
-        $('#montoTotalTarjeta').prop('required', false).val(''); // Limpiar y desrequerir monto tarjeta
-        $('#viajeProyecto').val(''); // Limpiar el select de viaje/proyecto
+        $('#tipoMovimientoWrapper').show();
+        $('#cuenta').prop('disabled', false); // <-- Importante: re-habilitar la cuenta
+        $('#formaPago').prop('disabled', false);
+        $('#camposTarjetaCredito').hide();
+        $('#tarjetaCredito').val('').prop('required', false);
+        $('#cuotasTotales').val('1').prop('required', false);
+        $('#montoTransaccion').prop('required', true);
+        $('#montoTotalTarjeta').prop('required', false).val('');
+        $('#viajeProyecto').val('');
     });
 
     // Enfocar el campo de monto cuando el modal se muestra completamente
     $('#transaccionModal').on('shown.bs.modal', function () {
-        // Enfocar el monto correcto basado en si los campos de tarjeta están visibles
         if ($('#camposTarjetaCredito').is(':visible')) {
             $('#montoTotalTarjeta').focus();
         } else {
@@ -376,44 +494,38 @@ $(document).ready(function(){
         const idFormaPago = $('#formaPago').val() === '' ? null : $('#formaPago').val();
         const descripcion = $('#descripcion').val();
         const fechaTransaccion = $('#fecha').val();
-        const idProyecto = $('#viajeProyecto').val() === '' || $('#viajeProyecto').val() === 'N/A' ? null : $('#viajeProyecto').val(); // Obtener id_proyecto
+        const idProyecto = $('#viajeProyecto').val() === '' || $('#viajeProyecto').val() === 'N/A' ? null : $('#viajeProyecto').val();
 
         let url = 'php/api/transactions.php';
         let formData = {};
 
-        // La edición no puede crear gastos de tarjeta, solo actualiza transacciones normales
         if ($('#camposTarjetaCredito').is(':visible') && !idTransaccion) {
-            // Es un gasto de tarjeta NUEVO
             url = 'php/api/card_transactions.php';
             formData = {
                 id_tarjeta: $('#tarjetaCredito').val(),
                 descripcion: descripcion,
-                monto_total: $('#montoTotalTarjeta').val(),
+                monto_total: formatNumberForServer($('#montoTotalTarjeta').val()),
                 cuotas_totales: $('#cuotasTotales').val(),
                 fecha_compra: fechaTransaccion,
-                // Otros campos necesarios para la transacción en la tabla `transacciones`
                 id_cuenta: idCuenta,
                 id_categoria: idCategoria,
-                tipo_movimiento: tipoMovimiento, // Debería ser 'gasto'
-                id_forma_pago: idFormaPago, // La forma de pago de la tarjeta
-                id_proyecto: idProyecto // Incluir id_proyecto
+                tipo_movimiento: tipoMovimiento,
+                id_forma_pago: idFormaPago,
+                id_proyecto: idProyecto
             };
         } else {
-            // Es una transacción normal (ingreso/gasto) o una EDICIÓN
             formData = {
                 id_transaccion: idTransaccion ? idTransaccion : null,
                 id_cuenta: idCuenta,
                 id_categoria: idCategoria,
                 id_forma_pago: idFormaPago,
                 tipo_movimiento: tipoMovimiento,
-                monto: $('#montoTransaccion').val(),
+                monto: formatNumberForServer($('#montoTransaccion').val()),
                 descripcion: descripcion,
                 fecha_transaccion: fechaTransaccion,
-                id_proyecto: idProyecto // Incluir id_proyecto
+                id_proyecto: idProyecto
             };
         }
-        console.log("Datos a enviar:", formData);
-        console.log("URL de la API:", url);
 
         $.ajax({
             url: url,
@@ -424,9 +536,8 @@ $(document).ready(function(){
             success: function(response) {
                 if (response.status === 'success') {
                     alert(response.message);
-                    $('#transaccionModal').modal('hide'); // Cerrar modal
-                    // $('#formTransaccion')[0].reset(); // Limpiar formulario - ya lo hace hidden.bs.modal
-                    cargarDashboard(); // Recargar el dashboard
+                    $('#transaccionModal').modal('hide');
+                    cargarDashboard();
                 } else {
                     alert('Error: ' + response.message);
                 }
@@ -447,13 +558,12 @@ $(document).ready(function(){
         const cuentaSeleccionada = $(this).find('option:selected').text().toLowerCase();
         const formaPagoSelect = $('#formaPago');
 
-        // Función para encontrar y seleccionar una opción
         const setFormaPago = (texto) => {
             const option = formaPagoSelect.find('option').filter(function() {
                 return $(this).text().trim().toLowerCase() === texto;
             }).val();
             if (option) {
-                formaPagoSelect.val(option).trigger('change'); // Trigger change para actualizar campos de tarjeta
+                formaPagoSelect.val(option).trigger('change');
             }
         };
 
@@ -512,11 +622,90 @@ $(document).ready(function(){
         });
     }
 
-    // Llamar a cargarGastosTarjeta al iniciar el dashboard
     const originalCargarDashboard = cargarDashboard;
     cargarDashboard = function() {
         originalCargarDashboard();
         cargarGastosTarjeta();
     };
 
+    function cargarCuentasGenerico(selector) {
+        return $.ajax({
+            url: 'php/api/get_cuentas.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    let options = '<option value="">Seleccione una cuenta...</option>';
+                    response.data.forEach(function(cuenta) {
+                        options += `<option value="${cuenta.id_cuenta}">${cuenta.nombre}</option>`;
+                    });
+                    $(selector).html(options);
+                } else {
+                    console.error('Error al cargar cuentas para el selector ' + selector + ':', response.message);
+                }
+            }
+        });
+    }
+
+    $('#transferenciaModal').on('show.bs.modal', function () {
+        cargarCuentasGenerico('#transferenciaCuentaOrigen');
+        cargarCuentasGenerico('#transferenciaCuentaDestino');
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        $('#transferenciaFecha').val(now.toISOString().slice(0, 16));
+    });
+
+    $('#transferenciaModal').on('hidden.bs.modal', function () {
+        $('#formTransferencia')[0].reset();
+    });
+
+    $('#formTransferencia').submit(function(e) {
+        e.preventDefault();
+
+        const idCuentaOrigen = $('#transferenciaCuentaOrigen').val();
+        const idCuentaDestino = $('#transferenciaCuentaDestino').val();
+        const monto = formatNumberForServer($('#transferenciaMonto').val());
+
+        if (idCuentaOrigen === idCuentaDestino) {
+            alert('La cuenta de origen y destino no pueden ser la misma.');
+            return;
+        }
+        if (monto <= 0) {
+            alert('El monto debe ser un número positivo.');
+            return;
+        }
+
+        const formData = {
+            id_cuenta_origen: idCuentaOrigen,
+            id_cuenta_destino: idCuentaDestino,
+            monto: monto,
+            fecha_transaccion: $('#transferenciaFecha').val(),
+            descripcion: $('#transferenciaDescripcion').val() || 'Transferencia entre cuentas'
+        };
+
+        $.ajax({
+            url: 'php/api/transferencia.php',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert('Transferencia registrada con éxito.');
+                    $('#transferenciaModal').modal('hide');
+                    cargarDashboard();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                let errorMsg = 'Error al procesar la transferencia.';
+                if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                    errorMsg = jqXHR.responseJSON.message;
+                }
+                alert(errorMsg);
+                console.error('Error en la petición AJAX de transferencia:', textStatus, errorThrown, jqXHR.responseJSON);
+            }
+        });
+    });
 });

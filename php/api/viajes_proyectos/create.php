@@ -14,7 +14,7 @@ if (!$data || !isset($data['nombre']) || !isset($data['fecha_inicio']) || !isset
 $nombre = trim($data['nombre']);
 $fecha_inicio = $data['fecha_inicio'];
 $fecha_fin = isset($data['fecha_fin']) && !empty($data['fecha_fin']) ? $data['fecha_fin'] : null;
-$presupuesto_total = $data['presupuesto_total'];
+$presupuesto_total = (float)$data['presupuesto_total'];
 
 if (empty($nombre) || empty($fecha_inicio) || !is_numeric($presupuesto_total) || $presupuesto_total < 0) {
     http_response_code(400);

@@ -11,11 +11,11 @@ if (!$data || !isset($data['id_proyecto']) || !isset($data['nombre']) || !isset(
     exit;
 }
 
-$id_proyecto = $data['id_proyecto'];
+$id_proyecto = (int)$data['id_proyecto'];
 $nombre = trim($data['nombre']);
 $fecha_inicio = $data['fecha_inicio'];
 $fecha_fin = isset($data['fecha_fin']) && !empty($data['fecha_fin']) ? $data['fecha_fin'] : null;
-$presupuesto_total = $data['presupuesto_total'];
+$presupuesto_total = (float)$data['presupuesto_total'];
 
 if (!is_numeric($id_proyecto) || empty($nombre) || empty($fecha_inicio) || !is_numeric($presupuesto_total) || $presupuesto_total < 0) {
     http_response_code(400);

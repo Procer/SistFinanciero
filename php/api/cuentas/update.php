@@ -11,10 +11,10 @@ if (!$data || !isset($data['id_cuenta']) || !isset($data['nombre']) || !isset($d
     exit;
 }
 
-$id_cuenta = $data['id_cuenta'];
+$id_cuenta = (int)$data['id_cuenta'];
 $nombre = trim($data['nombre']);
 $tipo_cuenta = $data['tipo_cuenta'];
-$saldo_inicial = $data['saldo_inicial'];
+$saldo_inicial = (float)$data['saldo_inicial'];
 
 if (empty($id_cuenta) || empty($nombre) || !in_array($tipo_cuenta, ['banco', 'billetera', 'otro']) || !is_numeric($saldo_inicial)) {
     http_response_code(400);

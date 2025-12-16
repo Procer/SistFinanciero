@@ -11,9 +11,9 @@ if (!$data || !isset($data['id_gasto_fijo']) || !isset($data['nombre']) || !isse
     exit;
 }
 
-$id_gasto_fijo = $data['id_gasto_fijo'];
+$id_gasto_fijo = (int)$data['id_gasto_fijo'];
 $nombre = trim($data['nombre']);
-$monto = $data['monto'];
+$monto = (float)$data['monto'];
 $frecuencia = $data['frecuencia'];
 $dia_pago = isset($data['dia_pago']) && !empty($data['dia_pago']) ? $data['dia_pago'] : null;
 

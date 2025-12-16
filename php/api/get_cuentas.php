@@ -2,6 +2,16 @@
 header('Content-Type: application/json');
 require_once '../db_connection.php';
 
+// Iniciar sesión y verificar autenticación
+session_start();
+if (!isset($_SESSION['id_usuario'])) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Acceso denegado. Por favor, inicie sesión.'
+    ]);
+    exit;
+}
+
 $response = [
     'status' => 'error',
     'message' => 'Ocurrió un error desconocido.',

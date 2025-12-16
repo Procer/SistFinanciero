@@ -19,6 +19,7 @@ Este archivo contiene todas las funcionalidades planificadas para el proyecto. A
     - [x] Ocultar y preseleccionar el tipo de movimiento según el botón pulsado.
     - [x] Reordenar el campo "Descripción" para mejorar el flujo.
     - [x] Implementado registro de Gastos de Tarjeta (con cuotas) a través del modal de transacciones.
+- [x] **Acciones Rápidas (Mejora UX):** Movida la sección a la parte superior y rediseñada para un acceso más rápido. Lógica de autocompletado para el formulario de gasto según la cuenta seleccionada.
 - [x] **Categorización:**
     - [x] Permitir categorizar Gastos.
     - [x] Permitir categorizar Ingresos.
@@ -127,6 +128,7 @@ Este archivo contiene todas las funcionalidades planificadas para el proyecto. A
     - [x] Interfaz para listar y agregar nuevas categorías de gastos.
     - [x] Permitir editar categorías existentes.
     - [x] Permitir eliminar categorías.
+    - [x] **Soporte para Subcategorías:** Implementada la capacidad de crear, editar y visualizar categorías en una estructura jerárquica (padre-hijo).
 - [x] **Gestión de Formas de Pago:**
     - [x] Interfaz para listar y agregar nuevas formas de pago.
     - [x] Permitir editar formas de pago existentes.

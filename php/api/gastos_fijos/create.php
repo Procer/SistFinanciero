@@ -12,7 +12,7 @@ if (!$data || !isset($data['nombre']) || !isset($data['monto']) || !isset($data[
 }
 
 $nombre = trim($data['nombre']);
-$monto = $data['monto'];
+$monto = (float)$data['monto'];
 $frecuencia = $data['frecuencia'];
 $dia_pago = isset($data['dia_pago']) && !empty($data['dia_pago']) ? $data['dia_pago'] : null;
 

@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_categoria = $input['id_categoria'] ?? null;
     $id_forma_pago = $input['id_forma_pago'] ?? null;
     $tipo_movimiento = $input['tipo_movimiento'] ?? null;
-    $monto = $input['monto'] ?? null;
+    $monto = (float)($input['monto'] ?? 0);
     $descripcion = $input['descripcion'] ?? null;
     $fecha_transaccion = $input['fecha_transaccion'] ?? date('Y-m-d H:i:s');
     $id_proyecto = $input['id_proyecto'] ?? null;
@@ -51,13 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("La transacción que intenta editar no existe.");
             }
 
-            // 2. Revertir el saldo en la cuenta original
+            // 2. Revertir el saldo en la cuenta original - COMENTADO PARA EVITAR INCONSISTENCIAS
+            /*
             if ($old_tx['tipo_movimiento'] === 'ingreso') {
                 $stmt_revert = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial - ? WHERE id_cuenta = ?");
             } else { // gasto
                 $stmt_revert = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial + ? WHERE id_cuenta = ?");
             }
             $stmt_revert->execute([$old_tx['monto'], $old_tx['id_cuenta']]);
+            */
 
             // 3. Actualizar la transacción con los nuevos datos
             $stmt_update = $pdo->prepare(
@@ -68,13 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt_update->execute([$id_cuenta, $id_categoria, $id_forma_pago, $monto, $descripcion, $fecha_transaccion, $id_proyecto, $id_transaccion]);
 
-            // 4. Aplicar el nuevo saldo en la nueva cuenta (puede ser la misma)
+            // 4. Aplicar el nuevo saldo en la nueva cuenta (puede ser la misma) - COMENTADO PARA EVITAR INCONSISTENCIAS
+            /*
             if ($tipo_movimiento === 'ingreso') {
                 $stmt_apply = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial + ? WHERE id_cuenta = ?");
             } else { // gasto
                 $stmt_apply = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial - ? WHERE id_cuenta = ?");
             }
             $stmt_apply->execute([$monto, $id_cuenta]);
+            */
 
             $response['message'] = 'Transacción actualizada exitosamente.';
 
@@ -88,15 +92,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt_insert->execute([$id_cuenta, $id_categoria, $id_forma_pago, $tipo_movimiento, $monto, $descripcion, $fecha_transaccion, $id_proyecto]);
 
-            // 2. Actualizar el saldo de la cuenta
+            // 2. Actualizar el saldo de la cuenta - COMENTADO PARA EVITAR DOBLE CONTEO
+            /*
             if ($tipo_movimiento === 'ingreso') {
                 $stmt_update_saldo = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial + ? WHERE id_cuenta = ?");
             } else { // 'gasto'
                 $stmt_update_saldo = $pdo->prepare("UPDATE cuentas SET saldo_inicial = saldo_inicial - ? WHERE id_cuenta = ?");
             }
             $stmt_update_saldo->execute([$monto, $id_cuenta]);
+            */
             
-            $response['message'] = 'Transacción registrada y saldo de cuenta actualizado exitosamente.';
+            $response['message'] = 'Transacción registrada exitosamente.';
         }
 
         $pdo->commit();

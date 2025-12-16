@@ -11,10 +11,10 @@ if (!$data || !isset($data['id_tarjeta']) || !isset($data['monto_total']) || !is
     exit;
 }
 
-$id_tarjeta = $data['id_tarjeta'];
+$id_tarjeta = (int)$data['id_tarjeta'];
 $descripcion = isset($data['descripcion']) ? trim($data['descripcion']) : null;
-$monto_total = $data['monto_total'];
-$cuotas_totales = $data['cuotas_totales'];
+$monto_total = (float)$data['monto_total'];
+$cuotas_totales = (int)$data['cuotas_totales'];
 $fecha_compra = $data['fecha_compra'];
 
 // Datos para la tabla de transacciones

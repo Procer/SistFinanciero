@@ -1,3 +1,4 @@
+<?php require_once 'php/session_check.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -44,7 +45,11 @@
                     <button class="btn btn-link" id="menu-toggle"><i class="fas fa-bars"></i></button>
                     <div class="ms-auto">
                         <span class="navbar-text">
-                            Bienvenido, Usuario
+                            <i class="fas fa-user me-2"></i>
+                            Bienvenido, <strong><?php echo htmlspecialchars($_SESSION['nombre_usuario']); ?></strong>
+                            <a href="logout.php" class="btn btn-outline-danger btn-sm ms-3">
+                                <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
+                            </a>
                         </span>
                     </div>
                 </div>
@@ -55,9 +60,18 @@
                     <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                 </div>
 
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h4 class="mb-3 text-gray-800">Acciones Rápidas</h4>
+                        <div class="row" id="quick-expense-buttons-container">
+                            <!-- Los botones de gasto rápido se cargarán aquí vía AJAX -->
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <!-- Tarjeta de Saldo Total -->
-                    <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="col-lg-3 col-md-6 mb-4">
                         <div class="card bg-primary text-white h-100">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -74,7 +88,7 @@
                     </div>
 
                     <!-- Tarjeta de Ingresos del Mes -->
-                    <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="col-lg-3 col-md-6 mb-4">
                         <div class="card bg-success text-white h-100">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -87,16 +101,13 @@
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-arrow-up fa-2x opacity-50"></i>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Tarjeta de Gastos del Mes -->
-                    <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="col-lg-3 col-md-6 mb-4">
                         <div class="card bg-danger text-white h-100">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -109,8 +120,24 @@
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- Tarjeta de Transferencia -->
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="card bg-info text-white h-100">
+                             <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col">
+                                        <div class="text-uppercase fw-bold mb-1">Transferir</div>
+                                        <div class="h5 mb-0">Entre Cuentas</div>
+                                    </div>
                                     <div class="col-auto">
-                                        <i class="fas fa-arrow-down fa-2x opacity-50"></i>
+                                        <button class="btn btn-outline-light btn-sm rounded-circle" data-bs-toggle="modal" data-bs-target="#transferenciaModal" style="width: 2.5rem; height: 2.5rem;">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -197,6 +224,50 @@
     <!-- Custom JS -->
     <script src="js/main.js"></script>
 
+
+    <!-- Modal para Nueva Transferencia -->
+    <div class="modal fade" id="transferenciaModal" tabindex="-1" aria-labelledby="transferenciaModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="transferenciaModalLabel">Realizar Transferencia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTransferencia">
+                        <div class="mb-3">
+                            <label for="transferenciaCuentaOrigen" class="form-label">Desde la cuenta</label>
+                            <select class="form-select" id="transferenciaCuentaOrigen" name="id_cuenta_origen" required>
+                                <!-- Opciones cargadas por AJAX -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferenciaCuentaDestino" class="form-label">Hacia la cuenta</label>
+                            <select class="form-select" id="transferenciaCuentaDestino" name="id_cuenta_destino" required>
+                                <!-- Opciones cargadas por AJAX -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferenciaMonto" class="form-label">Monto</label>
+                            <input type="number" class="form-control" id="transferenciaMonto" name="monto" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferenciaFecha" class="form-label">Fecha y Hora</label>
+                            <input type="datetime-local" class="form-control" id="transferenciaFecha" name="fecha_transaccion">
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferenciaDescripcion" class="form-label">Descripción (Opcional)</label>
+                            <textarea class="form-control" id="transferenciaDescripcion" name="descripcion" rows="2"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Confirmar Transferencia</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para Nueva Transacción -->
     <div class="modal fade" id="transaccionModal" tabindex="-1" aria-labelledby="transaccionModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -228,12 +299,6 @@
                                                     </select>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <label for="categoria" class="form-label">Categoría</label>
-                                                    <select class="form-select" id="categoria" name="id_categoria" required>
-                                                        <!-- Opciones cargadas por AJAX -->
-                                                    </select>
-                                                </div>
-                                                <div class="mb-3">
                                                     <label for="formaPago" class="form-label">Forma de Pago</label>
                                                     <select class="form-select" id="formaPago" name="id_forma_pago">
                                                         <option value="">N/A</option>
@@ -258,6 +323,12 @@
                                                     <input type="number" class="form-control" id="cuotasTotales" name="cuotas_totales" min="1" value="1">
                                                 </div>
                                                     <hr>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="categoria" class="form-label">Categoría</label>
+                                                    <select class="form-select" id="categoria" name="id_categoria" required>
+                                                        <!-- Opciones cargadas por AJAX -->
+                                                    </select>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label for="viajeProyecto" class="form-label">Viaje/Proyecto (Opcional)</label>

@@ -1,3 +1,7 @@
+<?php 
+require_once 'php/session_check.php'; 
+check_permission('admin'); // Solo los administradores pueden acceder a esta página
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -42,7 +46,11 @@
                     <button class="btn btn-link" id="menu-toggle"><i class="fas fa-bars"></i></button>
                     <div class="ms-auto">
                         <span class="navbar-text">
-                            Bienvenido, Usuario
+                            <i class="fas fa-user me-2"></i>
+                            Bienvenido, <strong><?php echo htmlspecialchars($_SESSION['nombre_usuario']); ?></strong>
+                            <a href="logout.php" class="btn btn-outline-danger btn-sm ms-3">
+                                <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
+                            </a>
                         </span>
                     </div>
                 </div>
@@ -296,6 +304,12 @@
                         <div class="mb-3">
                             <label for="categoriaNombre" class="form-label">Nombre</label>
                             <input type="text" class="form-control" id="categoriaNombre" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="categoriaPadre" class="form-label">Categoría Padre (Opcional)</label>
+                            <select class="form-select" id="categoriaPadre" name="id_categoria_padre">
+                                <!-- Opciones se cargarán dinámicamente -->
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Guardar</button>
                     </form>

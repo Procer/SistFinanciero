@@ -52,7 +52,16 @@
 
 ```sql
 CREATE TABLE `cuentas` ( `id_cuenta` INT AUTO_INCREMENT PRIMARY KEY, `nombre` VARCHAR(100) NOT NULL, `saldo_inicial` DECIMAL(10, 2) NOT NULL DEFAULT 0.00, `tipo_cuenta` ENUM('banco', 'billetera', 'otro') NOT NULL, `fecha_creacion` DATETIME DEFAULT CURRENT_TIMESTAMP, `activo` BOOLEAN NOT NULL DEFAULT TRUE );
-CREATE TABLE `categorias` ( `id_categoria` INT AUTO_INCREMENT PRIMARY KEY, `nombre` VARCHAR(100) NOT NULL, `tipo` ENUM('ingreso', 'gasto') NOT NULL, `activo` BOOLEAN NOT NULL DEFAULT TRUE );
+CREATE TABLE IF NOT EXISTS `categorias` (
+  `id_categoria` int NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `tipo` enum('ingreso','gasto') NOT NULL,
+  `id_categoria_padre` int DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id_categoria`),
+  KEY `fk_categoria_padre` (`id_categoria_padre`),
+  CONSTRAINT `fk_categoria_padre` FOREIGN KEY (`id_categoria_padre`) REFERENCES `categorias` (`id_categoria`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `formas_pago` ( `id_forma_pago` INT AUTO_INCREMENT PRIMARY KEY, `nombre` VARCHAR(100) NOT NULL, `activo` BOOLEAN NOT NULL DEFAULT TRUE );
 CREATE TABLE `transacciones` ( `id_transaccion` INT AUTO_INCREMENT PRIMARY KEY, `id_cuenta` INT NOT NULL, `id_categoria` INT NOT NULL, `id_forma_pago` INT NULL, `tipo_movimiento` ENUM('ingreso', 'gasto') NOT NULL, `monto` DECIMAL(10, 2) NOT NULL, `descripcion` TEXT, `fecha_transaccion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `ruta_imagen_recibo` VARCHAR(255) NULL, `analisis_recibo_texto` TEXT NULL, FOREIGN KEY (`id_cuenta`) REFERENCES `cuentas`(`id_cuenta`), FOREIGN KEY (`id_categoria`) REFERENCES `categorias`(`id_categoria`), FOREIGN KEY (`id_forma_pago`) REFERENCES `formas_pago`(`id_forma_pago`) );
 CREATE TABLE `tarjetas_credito` ( `id_tarjeta` INT AUTO_INCREMENT PRIMARY KEY, `nombre` VARCHAR(100) NOT NULL, `banco` VARCHAR(100) NULL, `limite_credito` DECIMAL(10, 2) NOT NULL DEFAULT 0.00, `fecha_cierre_extracto` INT NOT NULL, `fecha_vencimiento_pago` INT NOT NULL, `activo` BOOLEAN NOT NULL DEFAULT TRUE );

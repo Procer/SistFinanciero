@@ -14,7 +14,7 @@ if (!$data || !isset($data['nombre']) || !isset($data['tipo_cuenta']) || !isset(
 
 $nombre = trim($data['nombre']);
 $tipo_cuenta = $data['tipo_cuenta'];
-$saldo_inicial = $data['saldo_inicial'];
+$saldo_inicial = (float)$data['saldo_inicial'];
 
 if (empty($nombre) || !in_array($tipo_cuenta, ['banco', 'billetera', 'otro']) || !is_numeric($saldo_inicial)) {
     http_response_code(400);
