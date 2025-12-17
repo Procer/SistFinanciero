@@ -125,7 +125,9 @@ $(document).ready(function(){
                     } else {
                         widgetsHtml = '<div class="col-12"><p>No hay cuentas registradas.</p></div>';
                     }
+                    console.log('Widgets HTML generados:', widgetsHtml);
                     $('#cuentas-widgets-container').html(widgetsHtml);
+                    console.log('Botones de acción rápida HTML generados:', quickButtonsHtml);
                     $('#quick-expense-buttons-container').html(quickButtonsHtml);
                     console.log('Widgets y botones de acción rápida actualizados.');
 
