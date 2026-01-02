@@ -1,143 +1,168 @@
 $(document).ready(function() {
+    // Variables para los gráficos para poder destruirlos antes de volver a dibujarlos
+    let gastosCategoriasChart;
+    let gastosFormaPagoChart;
 
-    let gastosChart = null;
-
-    // Función para dar formato a los números
-    function formatNumber(num) {
-        if (num === null || num === undefined) {
-            num = 0;
-        }
-        let parts = parseFloat(num).toFixed(2).toString().split('.');
-        let integerPart = parts[0];
-        let decimalPart = parts[1];
-        
-        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        
-        return integerPart + "," + decimalPart;
-    }
-
-    // Llenar los selectores de mes y año
-    function inicializarSelectoresFecha() {
+    // --- INICIALIZACIÓN ---
+    function inicializarFiltros() {
         const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        const fechaActual = new Date();
-        const mesActual = fechaActual.getMonth();
-        const anioActual = fechaActual.getFullYear();
-
-        let mesesOptions = '';
+        const $selectMes = $('#selectMes');
         meses.forEach((mes, index) => {
-            mesesOptions += `<option value="${index + 1}">${mes}</option>`;
+            $selectMes.append(new Option(mes, index + 1));
         });
-        $('#selectMes').html(mesesOptions).val(mesActual + 1);
 
-        let aniosOptions = '';
-        for (let i = anioActual; i >= 2020; i--) {
-            aniosOptions += `<option value="${i}">${i}</option>`;
+        const $selectAnio = $('#selectAnio');
+        const anioActual = new Date().getFullYear();
+        for (let i = anioActual + 1; i >= anioActual - 5; i--) {
+            $selectAnio.append(new Option(i, i));
         }
-        $('#selectAnio').html(aniosOptions).val(anioActual);
+
+        // Establecer mes y año actual por defecto
+        $selectMes.val(new Date().getMonth() + 1);
+        $selectAnio.val(anioActual);
     }
 
-    // Cargar y mostrar los datos del análisis
-    function cargarAnalisisGastos() {
+    // --- LÓGICA PRINCIPAL DE CARGA ---
+    function cargarAnalisis() {
         const mes = $('#selectMes').val();
         const anio = $('#selectAnio').val();
 
         if (!mes || !anio) {
+            alert('Por favor, seleccione un mes y un año.');
             return;
         }
+        
+        // Muestra un loader o deshabilita el botón mientras carga
+        $('#btnAplicarFiltros').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Cargando...');
 
         $.ajax({
-            url: `php/api/analisis/reporte_gastos_mensuales.php?mes=${mes}&ano=${anio}`,
-            method: 'GET',
+            url: 'php/api/analisis/reporte_gastos.php',
+            type: 'GET',
+            data: { mes: mes, anio: anio },
             dataType: 'json',
-            beforeSend: function() {
-                $('#analisis-gastos-container').addClass('d-none');
-                $('#no-gastos-message').removeClass('d-none').text('Cargando...');
-            },
-            success: function(response) {
-                if (response.status === 'success' && response.data.total_gastos_mes > 0) {
+            success: function(data) {
+                if (data.resumen.total_gastos > 0) {
                     $('#analisis-gastos-container').removeClass('d-none');
                     $('#no-gastos-message').addClass('d-none');
-                    
-                    const data = response.data;
-                    renderResumen(data.total_gastos_mes);
-                    renderRankingTabla(data.gastos_por_categoria);
-                    renderGrafico(data.gastos_por_categoria);
-
+                    actualizarUI(data);
                 } else {
                     $('#analisis-gastos-container').addClass('d-none');
-                    $('#no-gastos-message').removeClass('d-none').text('No se encontraron gastos para el período seleccionado.');
-                     // Limpiar la tabla y el gráfico si no hay datos
-                    renderResumen(0);
-                    renderRankingTabla([]);
-                    renderGrafico([]);
+                    $('#no-gastos-message').removeClass('d-none');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error("Error al cargar el análisis:", error);
+                alert('Hubo un error al cargar los datos. Revise la consola para más detalles.');
                 $('#analisis-gastos-container').addClass('d-none');
-                $('#no-gastos-message').removeClass('d-none').text('Error de conexión al cargar el análisis.');
+                $('#no-gastos-message').removeClass('d-none').text('Error al cargar los datos.');
+            },
+            complete: function() {
+                // Vuelve a habilitar el botón
+                $('#btnAplicarFiltros').prop('disabled', false).html('<i class="fas fa-filter me-2"></i>Aplicar Filtros');
             }
         });
     }
 
-    function renderResumen(total) {
-        $('#total-gastos-mes').text('$' + formatNumber(total));
+    // --- FUNCIONES DE ACTUALIZACIÓN DE UI ---
+    function actualizarUI(data) {
+        // Formateador de moneda
+        const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+        // 1. Actualizar Resumen (KPIs)
+        $('#total-gastos-mes').text(currencyFormatter.format(data.resumen.total_gastos));
+        $('#burn-rate-diario').text(currencyFormatter.format(data.resumen.burn_rate_diario));
+
+        // 2. Actualizar Ranking por Categoría
+        const $rankingCategoriasBody = $('#rankingCategoriasBody');
+        $rankingCategoriasBody.empty();
+        data.gastos_por_categoria.forEach(item => {
+            const row = `<tr>
+                <td>${item.categoria}</td>
+                <td>${currencyFormatter.format(item.total_gastado)}</td>
+                <td>${parseFloat(item.porcentaje_del_total).toFixed(2)}%</td>
+            </tr>`;
+            $rankingCategoriasBody.append(row);
+        });
+
+        // 3. Actualizar Ranking por Forma de Pago
+        const $rankingFormaPagoBody = $('#rankingFormaPagoBody');
+        $rankingFormaPagoBody.empty();
+        data.gastos_por_forma_pago.forEach(item => {
+            const row = `<tr>
+                <td>${item.forma_pago}</td>
+                <td>${currencyFormatter.format(item.total_gastado)}</td>
+                <td>${parseFloat(item.porcentaje_del_total).toFixed(2)}%</td>
+            </tr>`;
+            $rankingFormaPagoBody.append(row);
+        });
+
+        // 4. Actualizar Detalle de Gastos
+        const $detalleGastosBody = $('#detalleGastosBody');
+        $detalleGastosBody.empty();
+        data.detalle_gastos.forEach(item => {
+            const row = `<tr>
+                <td>${item.fecha}</td>
+                <td>${item.descripcion}</td>
+                <td>${item.categoria}</td>
+                <td>${item.forma_pago}</td>
+                <td>${currencyFormatter.format(item.monto)}</td>
+                <td>${item.cuenta_tarjeta}</td>
+            </tr>`;
+            $detalleGastosBody.append(row);
+        });
+
+        // 5. Renderizar Gráficos
+        renderizarGraficoCategorias(data.gastos_por_categoria);
+        renderizarGraficoFormaPago(data.gastos_por_forma_pago);
     }
 
-    function renderRankingTabla(gastos) {
-        let tablaHtml = '';
-        if (gastos && gastos.length > 0) {
-            gastos.forEach(g => {
-                tablaHtml += `
-                    <tr>
-                        <td>${g.nombre}</td>
-                        <td>$${formatNumber(g.total_gastado)}</td>
-                        <td>${parseFloat(g.porcentaje).toFixed(2)}%</td>
-                    </tr>
-                `;
-            });
-        } else {
-            tablaHtml = '<tr><td colspan="3" class="text-center">Sin datos de gastos.</td></tr>';
+    // --- FUNCIONES DE RENDERIZADO DE GRÁFICOS ---
+    function renderizarGraficoCategorias(data) {
+        if (gastosCategoriasChart) {
+            gastosCategoriasChart.destroy();
         }
-        $('#rankingGastosBody').html(tablaHtml);
-    }
-
-    function renderGrafico(gastos) {
-        const ctx = document.getElementById('gastosCategoriasChart').getContext('2d');
-        
-        if (gastosChart) {
-            gastosChart.destroy();
-        }
-
-        if (!gastos || gastos.length === 0) {
-            // Podríamos mostrar un gráfico vacío o simplemente dejarlo en blanco
-             gastosChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Sin gastos este mes'],
-                    datasets: [{
-                        data: [1],
-                        backgroundColor: ['#f0f0f0'],
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-            return;
-        }
-
-        const labels = gastos.map(g => g.nombre);
-        const data = gastos.map(g => g.total_gastado);
-        
-        // Generar colores aleatorios para el gráfico
-        const backgroundColors = data.map(() => `rgba(${Math.floor(Math.random() * 225)}, ${Math.floor(Math.random() * 225)}, ${Math.floor(Math.random() * 225)}, 0.7)`);
-
-        gastosChart = new Chart(ctx, {
-            type: 'doughnut',
+        const ctx = document.getElementById('gastosCategoriasBarChart').getContext('2d');
+        gastosCategoriasChart = new Chart(ctx, {
+            type: 'bar',
             data: {
-                labels: labels,
+                labels: data.map(d => d.categoria),
                 datasets: [{
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    hoverOffset: 4
+                    label: 'Total Gastado',
+                    data: data.map(d => d.total_gastado),
+                    backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    function renderizarGraficoFormaPago(data) {
+        if (gastosFormaPagoChart) {
+            gastosFormaPagoChart.destroy();
+        }
+        const ctx = document.getElementById('gastosFormaPagoPieChart').getContext('2d');
+        gastosFormaPagoChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.map(d => d.forma_pago),
+                datasets: [{
+                    data: data.map(d => d.total_gastado),
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'],
                 }]
             },
             options: {
@@ -145,34 +170,17 @@ $(document).ready(function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed !== null) {
-                                    label += new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(context.parsed);
-                                }
-                                return label;
-                            }
-                        }
+                        position: 'bottom',
                     }
                 }
             }
         });
     }
 
-    // Eventos para cambiar mes o año
-    $('#selectMes, #selectAnio').on('change', function() {
-        cargarAnalisisGastos();
-    });
+    // --- EVENT LISTENERS ---
+    $('#btnAplicarFiltros').on('click', cargarAnalisis);
 
-    // Carga inicial
-    inicializarSelectoresFecha();
-    cargarAnalisisGastos();
-
+    // --- Carga inicial ---
+    inicializarFiltros();
+    cargarAnalisis();
 });

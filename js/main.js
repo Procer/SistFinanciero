@@ -27,6 +27,29 @@ $(document).ready(function(){
         return parseFloat(numString.replace(',', '.'));
     }
 
+    // Función para mostrar toasts (notificaciones no bloqueantes)
+    function mostrarToast(titulo, mensaje, tipo = 'success') {
+        const toastId = 'toast-' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${tipo} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${titulo}</strong> ${mensaje}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        $('.toast-container').append(toastHtml);
+        const toastEl = new bootstrap.Toast(document.getElementById(toastId));
+        toastEl.show();
+
+        // Eliminar el toast del DOM después de que se oculte
+        document.getElementById(toastId).addEventListener('hidden.bs.toast', function () {
+            this.remove();
+        });
+    }
+
     // Función para cargar los datos del dashboard
     function cargarDashboard() {
         console.log('Iniciando cargarDashboard()');
@@ -138,14 +161,17 @@ $(document).ready(function(){
                             if (tx.tipo_movimiento === 'transferencia') {
                                 transaccionesHtml += `
                                     <tr class="table-light">
-                                        <td>${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
-                                        <td class="fw-bold text-muted">$${formatNumber(tx.monto)}</td>
-                                        <td><i class="fas fa-exchange-alt me-2 text-info"></i>Transferencia</td>
-                                        <td>N/A</td>
-                                        <td>${tx.descripcion || `De ${tx.cuenta_origen_nombre} a ${tx.cuenta_destino_nombre}`}</td>
+                                        <td data-label="Fecha">${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
+                                        <td data-label="Cuenta"></td>
+                                        <td data-label="Monto" class="fw-bold text-muted">$${formatNumber(tx.monto)}</td>
+                                        <td data-label="Categoría"><i class="fas fa-exchange-alt me-2 text-info"></i>Transferencia</td>
+                                        <td data-label="Descripción">${tx.descripcion || `De ${tx.cuenta_origen_nombre} a ${tx.cuenta_destino_nombre}`}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Las transferencias no se pueden editar">
+                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Las transferencias no se pueden editar o eliminar">
                                                 <i class="fas fa-pencil-alt"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" disabled title="Las transferencias no se pueden editar o eliminar">
+                                                <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -158,17 +184,20 @@ $(document).ready(function(){
 
                                 transaccionesHtml += `
                                     <tr>
-                                        <td>${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
-                                        <td class="${montoClass} fw-bold">${montoSigno} $${formatNumber(tx.monto)}</td>
-                                        <td>${tx.categoria_nombre || 'Sin categoría'}</td>
-                                        <td>${tx.forma_pago_nombre || 'N/A'}</td>
-                                        <td>${descripcion}</td>
+                                        <td data-label="Fecha">${new Date(tx.fecha_transaccion).toLocaleDateString()}</td>
+                                        <td data-label="Cuenta">${tx.cuenta_nombre || 'N/A'}</td>
+                                        <td data-label="Monto" class="${montoClass} fw-bold">${montoSigno} $${formatNumber(tx.monto)}</td>
+                                        <td data-label="Categoría">${tx.categoria_nombre || 'Sin categoría'}</td>
+                                        <td data-label="Descripción">${descripcion}</td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary btn-edit-transaction" 
                                                     data-bs-toggle="modal" 
                                                     data-bs-target="#transaccionModal"
                                                     data-tx='${txData}'>
                                                 <i class="fas fa-pencil-alt"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger btn-delete-transaction" data-tx-id="${tx.id_transaccion}">
+                                                <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -537,11 +566,11 @@ $(document).ready(function(){
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
-                    alert(response.message);
+                    mostrarToast('Transacción Exitosa', response.message, 'success');
                     $('#transaccionModal').modal('hide');
                     cargarDashboard();
                 } else {
-                    alert('Error: ' + response.message);
+                    mostrarToast('Error', response.message, 'danger');
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -549,7 +578,7 @@ $(document).ready(function(){
                 if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                     errorMsg = jqXHR.responseJSON.message;
                 }
-                alert(errorMsg);
+                mostrarToast('Error de Transacción', errorMsg, 'danger');
                 console.error('Error en la petición AJAX:', textStatus, errorThrown, jqXHR.responseJSON);
             }
         });
@@ -669,11 +698,11 @@ $(document).ready(function(){
         const monto = formatNumberForServer($('#transferenciaMonto').val());
 
         if (idCuentaOrigen === idCuentaDestino) {
-            alert('La cuenta de origen y destino no pueden ser la misma.');
+            mostrarToast('Error de Validación', 'La cuenta de origen y destino no pueden ser la misma.', 'warning');
             return;
         }
         if (monto <= 0) {
-            alert('El monto debe ser un número positivo.');
+            mostrarToast('Error de Validación', 'El monto debe ser un número positivo.', 'warning');
             return;
         }
 
@@ -693,11 +722,11 @@ $(document).ready(function(){
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    alert('Transferencia registrada con éxito.');
+                    mostrarToast('Transferencia Exitosa', 'Transferencia registrada con éxito.', 'success');
                     $('#transferenciaModal').modal('hide');
                     cargarDashboard();
                 } else {
-                    alert('Error: ' + response.message);
+                    mostrarToast('Error de Transferencia', response.message, 'danger');
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -705,9 +734,71 @@ $(document).ready(function(){
                 if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                     errorMsg = jqXHR.responseJSON.message;
                 }
-                alert(errorMsg);
+                mostrarToast('Error de Transferencia', errorMsg, 'danger');
                 console.error('Error en la petición AJAX de transferencia:', textStatus, errorThrown, jqXHR.responseJSON);
             }
         });
     });
+
+    // --- LÓGICA DE BÚSQUEDA Y ELIMINACIÓN ---
+
+    // Buscador para la tabla de transacciones
+    $('#transactionSearchInput').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#transacciones-tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(searchTerm) > -1)
+        });
+    });
+
+    // Evento para el botón de eliminar transacción: Abre el modal de confirmación
+    $(document).on('click', '.btn-delete-transaction', function() {
+        const transactionId = $(this).data('tx-id');
+        
+        // Configurar el modal
+        $('#confirmacionModalLabel').text('Confirmar Eliminación');
+        $('#confirmacionModalBody').text('¿Estás seguro de que quieres eliminar esta transacción? Esta acción no se puede deshacer.');
+        $('#btn-confirmar-accion').data('id', transactionId); // Guardar el ID en el botón de confirmar
+        
+        // Mostrar el modal
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmacionModal'));
+        confirmModal.show();
+    });
+
+    // Evento para el botón de confirmación en el modal
+    $('#btn-confirmar-accion').on('click', function() {
+        const transactionId = $(this).data('id');
+        const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmacionModal'));
+
+        if (transactionId) {
+            $.ajax({
+                url: 'php/api/transactions/delete.php',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id_transaccion: transactionId }),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        mostrarToast('Éxito', response.message, 'success');
+                        cargarDashboard(); // Recargar todo para reflejar cambios
+                    } else {
+                        mostrarToast('Error', response.message, 'danger');
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    let errorMsg = 'Error al procesar la solicitud de eliminación.';
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errorMsg = jqXHR.responseJSON.message;
+                    }
+                    mostrarToast('Error', errorMsg, 'danger');
+                    console.error('Error en AJAX para eliminar:', textStatus, errorThrown);
+                },
+                complete: function() {
+                    if(confirmModal) {
+                        confirmModal.hide(); // Ocultar el modal después de la operación
+                    }
+                }
+            });
+        }
+    });
+
 });

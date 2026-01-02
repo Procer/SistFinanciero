@@ -458,16 +458,24 @@ $(document).ready(function() {
                     let tableBodyHtml = '';
                     if (response.data.length > 0) {
                         response.data.forEach(function(item) {
+                            // Formatear la fecha para legibilidad
+                            const fechaRegistro = new Date(item.fecha_registro).toLocaleString('es-AR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
                             tableBodyHtml += `
                                 <tr>
-                                    <td>${item.mes}</td>
-                                    <td>${item.fecha_sueldo_calculada || item.fecha_sueldo_estimada}</td>
-                                    <td>$${formatNumber(item.saldo_pre_sueldo)}</td>
+                                    <td>${item.periodo_sueldo || 'N/A'}</td>
+                                    <td>${fechaRegistro}</td>
+                                    <td>$${formatNumber(item.saldo)}</td>
                                 </tr>
                             `;
                         });
                     } else {
-                        tableBodyHtml = '<tr><td colspan="3" class="text-center">No hay datos disponibles para el año seleccionado.</td></tr>';
+                        tableBodyHtml = '<tr><td colspan="3" class="text-center">No hay datos de saldos pre-sueldo registrados para el año seleccionado.</td></tr>';
                     }
                     $('#saldoPreSueldoBody').html(tableBodyHtml);
                 } else {

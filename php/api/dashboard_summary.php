@@ -67,7 +67,7 @@ try {
             t.fecha_transaccion, t.descripcion, t.monto, t.tipo_movimiento,
             cat.nombre AS categoria_nombre, 
             fp.nombre AS forma_pago_nombre,
-            cta_origen.nombre as cuenta_origen_nombre,
+            cta_origen.nombre as cuenta_nombre,
             cta_destino.nombre as cuenta_destino_nombre
         FROM transacciones t
         LEFT JOIN categorias cat ON t.id_categoria = cat.id_categoria

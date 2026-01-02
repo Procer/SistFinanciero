@@ -285,6 +285,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // La ruta_imagen es relativa desde el proyecto web
         $db_ruta_imagen = 'uploads/recibos_sueldo/' . $uniqueFileName;
 
+        // --- INICIO: Lógica de Saldo Pre-Sueldo y Transacción ---
+
+        // IDs predefinidos para la cuenta de sueldo y categoría.
+        // TODO: Hacer que estos valores sean configurables en el futuro.
+        $id_cuenta_sueldo = 1; // ID de la cuenta donde se deposita el sueldo (ej. "Banco Galicia")
+        $id_categoria_sueldo = 1; // ID de la categoría para ingresos por sueldo (ej. "Sueldo")
+        $id_forma_pago_transferencia = 1; // ID de la forma de pago (ej. "Transferencia bancaria")
+
+        // 1. OBTENER SALDO ACTUAL (PRE-SUELDO) DE LA CUENTA PRINCIPAL
+        $sql_saldo = "
+            SELECT (c.saldo_inicial + COALESCE(SUM(
+                CASE
+                    WHEN t.tipo_movimiento = 'ingreso' THEN t.monto
+                    WHEN t.tipo_movimiento = 'gasto' THEN -t.monto
+                    WHEN t.tipo_movimiento = 'transferencia' AND t.id_cuenta = :id_cuenta THEN -t.monto
+                    WHEN t.tipo_movimiento = 'transferencia' AND t.id_cuenta_destino = :id_cuenta THEN t.monto
+                    ELSE 0
+                END
+            ), 0)) AS saldo_actual
+            FROM cuentas c
+            LEFT JOIN transacciones t ON c.id_cuenta = t.id_cuenta OR c.id_cuenta = t.id_cuenta_destino
+            WHERE c.id_cuenta = :id_cuenta
+            GROUP BY c.id_cuenta, c.saldo_inicial;
+        ";
+        $stmt_saldo = $pdo->prepare($sql_saldo);
+        $stmt_saldo->execute([':id_cuenta' => $id_cuenta_sueldo]);
+        $saldo_pre_sueldo = $stmt_saldo->fetchColumn();
+        if ($saldo_pre_sueldo === false) {
+             // Si no hay transacciones, el saldo es el inicial
+            $stmt_saldo_inicial = $pdo->prepare("SELECT saldo_inicial FROM cuentas WHERE id_cuenta = ?");
+            $stmt_saldo_inicial->execute([$id_cuenta_sueldo]);
+            $saldo_pre_sueldo = $stmt_saldo_inicial->fetchColumn();
+        }
+
+
+        // 2. GUARDAR RECIBO DE SUELDO
         $sql = "INSERT INTO recibos_sueldo (id_usuario, nombre_empleado, cuil_empleado, nombre_empleador, cuit_empleador, periodo_sueldo, fecha_pago, lugar_pago, forma_pago_detalle, sueldo_bruto, sueldo_neto, descuentos_total, ruta_imagen, detalle_json, ultimo_deposito_cargas_sociales_json) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
@@ -296,17 +332,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         $id_recibo_insertado = $pdo->lastInsertId();
 
-        // --- Parte 4: Opcional: Crear transacción asociada ---
-        // Podríamos crear una transacción de ingreso por el sueldo neto, asociándola al recibo
-        // Esto depende de la lógica de negocio, por ahora lo dejamos como ejemplo.
-        /*
+        // 3. GUARDAR EL SALDO PRE-SUELDO OBTENIDO
+        if ($saldo_pre_sueldo !== false) {
+            $sql_pre_sueldo = "INSERT INTO saldo_pre_sueldo (id_cuenta, saldo, id_recibo_sueldo) VALUES (?, ?, ?)";
+            $stmt_pre_sueldo = $pdo->prepare($sql_pre_sueldo);
+            $stmt_pre_sueldo->execute([$id_cuenta_sueldo, $saldo_pre_sueldo, $id_recibo_insertado]);
+        }
+        
+        // 4. CREAR LA TRANSACCIÓN DE INGRESO ASOCIADA AL SUELDO
         if ($id_recibo_insertado && $sueldo_neto > 0) {
-            // Necesitaríamos saber a qué cuenta se deposita el sueldo por defecto, o que el usuario la elija
-            // Por simplicidad, aquí usaríamos una cuenta o categoría predefinida.
-            $id_cuenta_sueldo = 1; // ID de una cuenta por defecto (ej. "Banco Galicia")
-            $id_categoria_sueldo = 1; // ID de una categoría por defecto (ej. "Sueldo")
-            $id_forma_pago_transferencia = 1; // ID de una forma de pago por defecto (ej. "Transferencia bancaria")
-
             $sql_transaccion = "INSERT INTO transacciones (id_cuenta, id_categoria, id_forma_pago, tipo_movimiento, monto, descripcion, fecha_transaccion, id_recibo)
                                 VALUES (?, ?, ?, 'ingreso', ?, ?, ?, ?)";
             $stmt_transaccion = $pdo->prepare($sql_transaccion);
@@ -315,12 +349,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id_categoria_sueldo, 
                 $id_forma_pago_transferencia, 
                 $sueldo_neto, 
-                "Sueldo de $periodo_sueldo (Recibo #$id_recibo_insertado)", 
-                $fecha_pago ?? date('Y-m-d H:i:s'), // Usar fecha de pago si existe, sino la actual
+                "Sueldo $periodo_sueldo (Recibo #$id_recibo_insertado)", 
+                $fecha_pago ?? date('Y-m-d H:i:s'),
                 $id_recibo_insertado
             ]);
         }
-        */
+
+        // --- FIN: Lógica de Saldo Pre-Sueldo y Transacción ---
 
         $pdo->commit();
         $response['status'] = 'success';

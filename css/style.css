@@ -200,7 +200,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Custom background color for NatanjayX */
-.card.bg-orange {
+.bg-orange {
     background-color: #FF5722 !important; /* Un naranja de Material Design, se puede ajustar */
 }
 
@@ -211,4 +211,55 @@ h1, h2, h3, h4, h5, h6 {
 
 .bg-banco-galicia {
     background-color: #c85000 !important;
+}
+
+/* Responsive Table/Card View for Transactions */
+@media (max-width: 768px) {
+    #transaccionesTable thead {
+        /* Oculta los encabezados de la tabla en móvil */
+        display: none;
+    }
+
+    #transaccionesTable, #transaccionesTable tbody, #transaccionesTable tr, #transaccionesTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #transaccionesTable tr {
+        /* Estilo de tarjeta para cada transacción */
+        background-color: #fff;
+        margin-bottom: 15px;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        position: relative;
+    }
+
+    #transaccionesTable td {
+        /* Ajuste del layout de cada celda */
+        text-align: right; /* Alinea el valor a la derecha */
+        padding-left: 50%; /* Espacio para la etiqueta */
+        position: relative;
+        border: none;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        min-height: 30px; /* Altura mínima para mejor tacto */
+    }
+
+    #transaccionesTable td::before {
+        /* Crea las etiquetas (ej. "Fecha:", "Cuenta:") */
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        text-align: left;
+        font-weight: bold;
+        color: #343a40;
+    }
+    
+    #transaccionesTable td:last-child {
+        /* Contenedor de botones de acción */
+        text-align: center;
+        padding-left: 0;
+        padding-top: 15px;
+    }
 }

@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime('css/style.css'); ?>">
 </head>
 <body>
 
@@ -157,8 +157,12 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card shadow">
-                            <div class="card-header py-3">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 fw-bold text-primary">Últimas Transacciones del Mes</h6>
+                                <div class="input-group" style="width: 250px;">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" id="transactionSearchInput" class="form-control form-control-sm" placeholder="Buscar en transacciones...">
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -166,9 +170,9 @@
                                         <thead>
                                             <tr>
                                                 <th>Fecha</th>
+                                                <th>Cuenta</th>
                                                 <th>Monto</th>
                                                 <th>Categoría</th>
-                                                <th>Forma de Pago</th>
                                                 <th>Descripción</th>
                                                 <th>Acciones</th>
                                             </tr>
@@ -222,8 +226,12 @@
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <!-- Custom JS -->
-    <script src="js/main.js"></script>
+    <script src="js/main.js?v=<?php echo filemtime('js/main.js'); ?>"></script>
 
+    <!-- Contenedor para Toasts -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <!-- Los toasts se insertarán aquí -->
+    </div>
 
     <!-- Modal para Nueva Transferencia -->
     <div class="modal fade" id="transferenciaModal" tabindex="-1" aria-labelledby="transferenciaModalLabel" aria-hidden="true">
@@ -352,5 +360,24 @@
                                     </div>
                                 </div>
                             </div>
+
+    <!-- Modal de Confirmación Genérico -->
+    <div class="modal fade" id="confirmacionModal" tabindex="-1" aria-labelledby="confirmacionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmacionModalLabel">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacionModalBody">
+                    ¿Estás seguro de que quieres realizar esta acción?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirmar-accion">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
                         </body>
                         </html>

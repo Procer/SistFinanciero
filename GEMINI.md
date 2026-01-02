@@ -10,7 +10,7 @@
     - Se ha modificado `index.php` para crear la estructura visual del Dashboard (tarjetas de resumen, tablas de cuentas).
     - Se ha integrado JQuery/AJAX en `js/main.js` para consumir los datos de la API y mostrarlos dinámicamente.
 - Se han creado los endpoints `php/api/get_cuentas.php`, `php/api/get_categorias.php`, `php/api/get_formas_pago.php` para la carga dinámica de datos en formularios.
-- Se han diseñado y programado los formularios de transacción (en modales de Bootstrap) para agregar nuevas transacciones, con lógica de envío y recarga del dashboard en `js/main.js`.
+- Se han diseñado y programado los formularios de transacción (en modales de Bootstrap) para agregar nuevas transacciones, con lógica de envío y recarga del dashboard en `js/main.js`.GEMINI.md
 - Se ha implementado el ABM completo para **Cuentas** (Crear, Leer, Editar, Eliminar/Desactivar) en `gestion.php`, `js/gestion.js` y `php/api/cuentas/`.
 - Se ha implementado el ABM completo para **Categorías** (Crear, Leer, Editar, Eliminar/Desactivar) en `gestion.php`, `js/gestion.js` y `php/api/categorias/`.
 - Se ha implementado el ABM completo para **Formas de Pago** (Crear, Leer, Editar, Eliminar/Desactivar) en `gestion.php`, `js/gestion.js` y `php/api/formas_pago/`.

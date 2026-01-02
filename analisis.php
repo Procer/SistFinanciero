@@ -213,9 +213,9 @@
                                     <table class="table table-bordered" id="saldoPreSueldoTable" width="100%" cellspacing="0">
                                         <thead>
                                             <tr>
-                                                <th>Mes</th>
-                                                <th>Fecha de Sueldo Estimada</th>
-                                                <th>Saldo Pre-Sueldo</th>
+                                                <th>Período del Recibo</th>
+                                                <th>Fecha de Registro</th>
+                                                <th>Saldo Registrado</th>
                                             </tr>
                                         </thead>
                                         <tbody id="saldoPreSueldoBody">
